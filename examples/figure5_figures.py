@@ -5,31 +5,28 @@ import matplotlib as mpl
 mpl.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+from SL_GPsim.figure_style import BLUE, COLUMN_WIDTH, FIGURE_STYLE, INK, ORANGE, PURPLE, TEAL
 from empirical_violin import violin
 from figure5_data import AMPS, FIELDS, METHODS, OUT, broadband, slope, truth
 
-COL = ["#4c72b0", "#55a868", "#dd8452"]
-POST = "#825d9e"
-INK = "#242d36"
+COL = [BLUE, TEAL, ORANGE]
+POST = PURPLE
 AMP_LABELS = ["0.5", "1", "2", "4"]
 SHORT = ["specparam", "SL multiplicative", "SL additive"]
-mpl.rcParams.update({"axes.spines.top":False, "axes.spines.right":False, "axes.edgecolor":"#a4abb0",
-    "axes.labelcolor":INK, "xtick.color":INK, "ytick.color":INK, "text.color":INK,
-    "font.size":9, "axes.titlesize":11, "axes.titleweight":"bold", "legend.frameon":False,
-    "svg.fonttype":"none", "pdf.fonttype":42, "figure.facecolor":"white"})
 
 def panel(ax, letter, title):
-    ax.set_title(f"{letter}   {title}", loc="left", pad=8)
+    ax.text(-0.05, 1.10, letter.lower(), transform=ax.transAxes, weight="bold", fontsize=8, va="baseline")
+    ax.set_title(title, loc="left", x=0.07, pad=6, fontsize=7)
 
-def sheet(title, subtitle, size=(12,7.5)):
+def sheet(title, subtitle, size=(COLUMN_WIDTH, 5.25)):
     fig=plt.figure(figsize=size)
-    fig.text(.055,.957,title,fontsize=21,weight="bold",va="top")
-    fig.text(.055,.902,subtitle,fontsize=10.5,va="top",color="#46535b")
+    fig.text(.055,.957,title,fontsize=10,weight="bold",va="top")
+    fig.text(.055,.902,subtitle,fontsize=7,va="top",color=INK)
     return fig
 
 def height_axis(ax):
     ax.set_xticks(range(4),AMP_LABELS); ax.set_xlim(-.6,3.6)
-    ax.set_xlabel("Generating rhythm amplitude")
+    ax.set_xlabel("Rhythm amplitude")
 
 def htruth(ax, value):
     ax.axhline(value,ls="--",lw=1.05,color=INK,zorder=0)
@@ -54,7 +51,7 @@ def contrasts(records, seed=202611, n=20000):
 def mainpage(records, boots, delta):
     fig=sheet("A change in rhythm amplitude can shift the fitted broadband slope",
         "Figure 5 uncertainty analysis   /   30 independent 30 s recordings per amplitude   /   8 Hz rhythm, fixed knee and exponent")
-    gs=fig.add_gridspec(2,4,left=.07,right=.985,top=.81,bottom=.17,hspace=.70,wspace=.43)
+    gs=fig.add_gridspec(2,4,left=.095,right=.98,top=.81,bottom=.20,hspace=.77,wspace=.65)
     f=boots[0]["f"]
     s_true=slope(f,truth(f,0)[0]); alphas=[.32,.5,.73,1]
     for j,title in enumerate(["Generating components",*SHORT]):
@@ -67,7 +64,7 @@ def mainpage(records, boots, delta):
         a.axvspan(40,60,alpha=.10,color="#a73441")
         a.set(xlim=(1,200),ylim=(2e-5,8),xlabel="Frequency (Hz)")
         a.set_xticks([1,8,50,200],["1","8","50","200"])
-        if j==0:a.set_ylabel("Component PSD")
+        if j==0:a.set_ylabel("Component PSD (a.u.²/Hz)")
     a=fig.add_subplot(gs[1,0]);panel(a,"E","High − low mean slope")
     for j in range(3):
         q=np.quantile(delta[:,j],[.025,.975])
@@ -85,8 +82,8 @@ def mainpage(records, boots, delta):
             a.plot(l,v.mean(),"D",color="white",mec=INK,ms=4.2)
         htruth(a,s_true);height_axis(a);a.set_ylim(ylim)
         if j==0:a.set_ylabel("40–60 Hz broadband slope")
-    fig.text(.055,.085,"A–D   Solid curves show rhythmic excess in linear power. Dashed curves show broadband. Darker shades indicate larger amplitudes. B–D use record 1.",fontsize=9)
-    fig.text(.055,.055,"E   95% intervals for the mean contrast resample 30 records per endpoint.   F–H   Each dot is one fit. Diamonds are means. The dashed line is the generating slope.",fontsize=9)
+    fig.text(.055,.085,"a–d  Solid, rhythmic excess; dashed, broadband. Darker curves indicate larger amplitudes. Fits are from record 1.",fontsize=6)
+    fig.text(.055,.055,"e  Intervals resample 30 records per endpoint.   f–h  Dots are fits, diamonds are means and dashed lines mark truth.",fontsize=6)
     return fig
 
 def within_page(boot,post,truth_s):
@@ -111,9 +108,9 @@ def within_page(boot,post,truth_s):
         a.axvline(np.sqrt(60),ls=":",lw=1,c=INK);htruth(a,truth_s)
         a.set_xlabel("Fitted knee (Hz)")
         if j==0:a.set_ylabel("40–60 Hz broadband slope")
-        a.legend(fontsize=8,loc="lower right",handletextpad=.2)
-    fig.text(.055,.091,"A–C   Method color shows the time-domain bootstrap. Purple shows the SL posterior. Bars span the central 95%, white dots mark medians, and black diamonds are observed fits.",fontsize=9)
-    fig.text(.055,.06,"D–F   Each point is a joint bootstrap refit. Only finite positive knee frequencies are shown. Dotted vertical and dashed horizontal lines mark generating values.",fontsize=9)
+        a.legend(fontsize=6,loc="lower right",handletextpad=.2)
+    fig.text(.055,.091,"a–c  Bootstrap refits and SL posterior (purple). Bars span the central 95%. White dots mark medians; diamonds mark observed fits.",fontsize=6)
+    fig.text(.055,.06,"d–f  Each point is a joint refit with a finite positive knee. The reference lines mark the generating knee and slope.",fontsize=6)
     return fig
 
 def mechanism(ctrl, f):
@@ -130,19 +127,19 @@ def mechanism(ctrl, f):
         a.plot(f,np.log10(1+r/bg),color=color,lw=2,label=f"A = {A:g}")
         a.plot(f,theta[6]*np.exp(-.5*((f-theta[5])/theta[7])**2),ls="--",color=color,lw=1.5)
         b.semilogx(f,bb_curve(f,theta)/bg,color=color,lw=2,label=f"A = {A:g}")
-    panel(a,"A","Rhythmic excess above broadband"); a.set(xlim=(1,26),xlabel="Frequency (Hz)",ylabel="Excess in log₁₀ power")
-    a.legend(fontsize=8);panel(b,"B","Fitted / generating broadband")
+    panel(a,"A","Rhythmic excess above broadband"); a.set(xlim=(1,26),xlabel="Frequency (Hz)",ylabel="Excess in log10 power")
+    a.legend(fontsize=6);panel(b,"B","Fitted / generating broadband")
     b.axhline(1,color=INK,ls="--",lw=1);b.axvspan(40,60,color="#c15e72",alpha=.16)
-    b.set(xlim=(1,200),xlabel="Frequency (Hz)",ylabel="Power ratio");b.set_xticks([1,8,50,200],["1","8","50","200"]);b.legend(fontsize=8)
+    b.set(xlim=(1,200),xlabel="Frequency (Hz)",ylabel="Power ratio");b.set_xticks([1,8,50,200],["1","8","50","200"]);b.legend(fontsize=6)
     for ax,pop,title,letter in [(c,"additive truth","Additive generating spectrum","C"),
                                  (d,"multiplicative truth","Log-Gaussian generating spectrum","D")]:
         for key,label,col,ls in [(pop,"specparam",COL[0],"-"),
                   (pop+" (joint fit)","Joint log-power fit","#a84954","-")]:
             v=ctrl[ctrl.control==key]; ax.plot(range(4),v.slope40_60,color=col,ls=ls,marker="o",ms=4,label=label)
         htruth(ax,slope(f,truth(f,0)[0]));height_axis(ax);panel(ax,letter,title)
-        ax.set_ylim(-2.075,-1.918);ax.set_ylabel("40–60 Hz broadband slope");ax.legend(fontsize=8)
-    fig.text(.055,.089,"A   Solid lines are log₁₀(1 + rhythm / broadband). Dashed lines are specparam’s fitted Gaussian bumps. B shows the compensating change in the fitted broadband.",fontsize=9)
-    fig.text(.055,.058,"C–D   The joint fit optimizes the broadband and log-peak parameters together. The multiplicative control matches the additive spectrum’s total power at 8 Hz.",fontsize=9)
+        ax.set_ylim(-2.075,-1.918);ax.set_ylabel("40–60 Hz broadband slope");ax.legend(fontsize=6)
+    fig.text(.055,.089,"a  Solid, log10(1 + rhythm / broadband); dashed, fitted log-Gaussian peak.   b  Ratio of fitted to generating broadband.",fontsize=6)
+    fig.text(.055,.058,"c–d  Joint fits optimize all parameters together. The two controls match in total power at 8 Hz.",fontsize=6)
     return fig
 
 def parameter_page(m,boot,post):
@@ -150,8 +147,8 @@ def parameter_page(m,boot,post):
                 if m else "Four representative recordings   /   399 specparam bootstrap refits per recording   /   Bars span the central 95%")
     fig=sheet(f"{SHORT[m]} parameter distributions", subtitle)
     gs=fig.add_gridspec(2,3,left=.075,right=.975,top=.79,bottom=.17,hspace=.64,wspace=.33)
-    params=[(1,"Log₁₀ numerator"),(2,"Broadband exponent"),(4,"Knee (Hz)"),(5,"Peak center (Hz)"),
-            (6,"Linear peak amplitude" if m==2 else "Log₁₀ peak amplitude"),(7,"Peak width σ (Hz)")]
+    params=[(1,"Log10 numerator"),(2,"Broadband exponent"),(4,"Knee (Hz)"),(5,"Peak center (Hz)"),
+            (6,"Linear peak amplitude" if m==2 else "Log10 peak amplitude"),(7,"Peak width σ (Hz)")]
     for i,(k,name) in enumerate(params):
         a=fig.add_subplot(gs[i//3,i%3]);panel(a,"ABCDEF"[i],name)
         for l,A in enumerate(AMPS):
@@ -163,31 +160,33 @@ def parameter_page(m,boot,post):
                 value={1:.5,2:2.,4:np.sqrt(60),5:8.,6:A,7:3.}[k]
                 a.hlines(value,l-.38,l+.38,ls="--",color=INK,lw=.8)
         height_axis(a)
-    fig.text(.055,.087,"Black diamonds mark observed fits. Dashed segments mark the generating broadband parameters and, for the additive model, the generating peak parameters.",fontsize=9)
-    fig.text(.055,.057,"Widths are scaled within each half-violin. Peak and knee-frequency summaries use finite estimates. Raw specparam knee coefficients and finite counts are included in the tables.",fontsize=9)
+    fig.text(.055,.087,"Diamonds show observed fits. Dashed lines mark comparable generating values.",fontsize=6)
+    fig.text(.055,.057,"Each half-violin has its own width scale. The tables report finite fit counts and raw specparam knee coefficients.",fontsize=6)
     return fig
 
 def interval_page(perfit, truth_s):
     fig=sheet("Specparam uncertainty across all 120 recordings",
         "Each row is one 30 s record. Each interval comes from simulating and refitting 399 surrogate records using that recording’s own multitaper pilot.")
-    gs=fig.add_gridspec(1,4,left=.065,right=.97,top=.80,bottom=.18,wspace=.13)
+    gs=fig.add_gridspec(1,4,left=.08,right=.98,top=.80,bottom=.20,wspace=.17)
     lo=min(perfit.lower.min(),truth_s)-.01;hi=max(perfit.upper.max(),truth_s)+.01
     for l,A in enumerate(AMPS):
         a=fig.add_subplot(gs[0,l]);panel(a,"ABCD"[l],f"Amplitude {A:g}")
         dat=perfit[perfit.level==l].sort_values("record")
         a.axvline(truth_s,color=INK,ls="--",lw=1.2)
         for row in dat.itertuples():
-            color=COL[0] if row.lower<=truth_s<=row.upper else "#a54952"
-            a.plot([row.lower,row.upper],[row.record]*2,c=color,lw=1.3)
+            covered = row.lower <= truth_s <= row.upper
+            color = COL[0] if covered else ORANGE
+            a.plot([row.lower,row.upper],[row.record]*2,c=color,lw=0.85,ls="-" if covered else "--")
             a.scatter(row.observed,row.record,s=9,c=color)
         a.set(xlim=(lo,hi),ylim=(30.8,.2),xlabel="40–60 Hz broadband slope")
         if l==0:a.set_ylabel("Recording number")
         else:a.tick_params(axis="y",labelleft=False)
         a.set_yticks([1,5,10,15,20,25,30])
-    fig.text(.055,.089,"Dots give original fits. Lines give percentile intervals for the refitted estimator. Red intervals miss the known broadband slope, shown by the dashed vertical line.",fontsize=9)
-    fig.text(.055,.056,"The fraction covering truth measures recovery in this specific simulation. Bootstrap refits can repeat the same model-dependent error as the original estimator.",fontsize=9)
+    fig.text(.055,.089,"Dots give original fits. Lines give percentile intervals for the refitted estimator. Dashed orange intervals miss the generating slope (vertical line).",fontsize=6)
+    fig.text(.055,.056,"The fraction covering truth measures recovery in this specific simulation. Bootstrap refits can repeat the same model-dependent error as the original estimator.",fontsize=6)
     return fig
 
+@mpl.rc_context(FIGURE_STYLE)
 def render():
     files=lambda p: dict(np.load(OUT/p))
     b=[files(f"boot_{l}_0.npz") for l in range(4)]
