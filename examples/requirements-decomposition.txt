@@ -1,0 +1,6 @@
+# Install in the environment.yml environment for the optional paired fits / NUTS.
+pymc==5.28.5
+pytensor==2.38.3
+arviz==0.22.0
+specparam==2.0.0rc7
+SL_specdecomp @ git+https://github.com/Stephen-Lab-BU/SL_specdecomp.git@352c313815ab5fd30e2184d2db79a8f05a231fbe

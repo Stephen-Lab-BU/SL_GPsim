@@ -1,7 +1,10 @@
 """
 Plotting module for SL_GPsim.
 """
+import matplotlib as mpl
 import matplotlib.pyplot as plt
+
+from .figure_style import BLUE, FIGURE_STYLE, INK, ORANGE, TEAL
 from abc import ABC, abstractmethod
 
 class BasePlotter(ABC):
@@ -13,6 +16,7 @@ class BasePlotter(ABC):
 
 class PSDPlotter(BasePlotter):
     """Plotter for power spectral density decomposition (log-log)."""
+    @mpl.rc_context(FIGURE_STYLE)
     def plot(self, frequency_data):
         """
         Plot the theoretical and optional empirical PSD components on a log-log axis.
@@ -40,7 +44,7 @@ class PSDPlotter(BasePlotter):
             frequency_data.broadband_spectrum[positive_mask],
             label="Broadband (1/f + knee)",
             linestyle="--",
-            color = 'blue',
+            color=BLUE,
         )
         # Plot rhythmic
         ax.loglog(
@@ -48,15 +52,15 @@ class PSDPlotter(BasePlotter):
             frequency_data.rhythmic_spectrum[positive_mask],
             label="Rhythmic",
             linestyle="--",
-            color = 'green',
+            color=ORANGE,
         )
         # Plot combined
         ax.loglog(
             f_plot,
             frequency_data.combined_spectrum[positive_mask],
             label="Combined (theoretical)",
-            linewidth=2.0,
-            color="black"
+            linewidth=1.2,
+            color=INK
         )
         # If we have an empirical PSD
         if frequency_data.empirical_spectrum is not None:
@@ -64,15 +68,15 @@ class PSDPlotter(BasePlotter):
                 f_plot,
                 frequency_data.empirical_spectrum[positive_mask],
                 label="Combined (empirical)",
-                color = 'black',
-                alpha = 0.5
+                color=TEAL,
+                alpha=0.7
             )
 
         ax.set_xlabel("Frequency (Hz)")
-        ax.set_ylabel("PSD (arbitrary units)")
+        ax.set_ylabel("PSD (a.u.²/Hz)")
         ax.legend()
         ax.set_title("PSD Decomposition (Theoretical vs Empirical)")
-        ax.grid(True, which='both', linestyle=':', alpha=0.5)
+        
 
         # Optionally fix y-lims to something reasonable:
         ymin = 1e-13
