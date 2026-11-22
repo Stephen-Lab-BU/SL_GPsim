@@ -15,6 +15,8 @@ python -m pip install --no-deps --no-build-isolation -e .
 python examples/simulate_spectra.py
 ```
 
+Figures use Arial when it is installed. On systems without Arial, Matplotlib uses the first installed sans-serif fallback.
+
 The last command prints the dimensions of two example recordings. Look for `(1024, 1)` and `(1024, 2)`. The examples below run in order in a Python session or notebook using that environment.
 
 ## Simulate eight seconds with a 20 Hz rhythm
@@ -42,14 +44,16 @@ The model is also a function. Evaluate it at any frequencies to draw a smooth re
 ```python
 import matplotlib.pyplot as plt
 import numpy as np
+from SL_GPsim.figure_style import FIGURE_STYLE
 
 hz = np.linspace(0.125, 48, 2000)
-fig, ax = plt.subplots()
-ax.semilogy(f[1:-1], S[1:-1, 0, 0].real, alpha=0.55, label="Multitaper")
-ax.semilogy(hz, model(hz), color="black", label="Generating spectrum")
-ax.set(xlim=(0, 48), xlabel="Frequency (Hz)", ylabel="Power per Hz")
-ax.legend()
-plt.show()
+with plt.rc_context(FIGURE_STYLE):
+    fig, ax = plt.subplots()
+    ax.semilogy(f[1:-1], S[1:-1, 0, 0].real, alpha=0.55, label="Multitaper")
+    ax.semilogy(hz, model(hz), color="black", label="Generating spectrum")
+    ax.set(xlim=(0, 48), xlabel="Frequency (Hz)", ylabel="Power per Hz")
+    ax.legend()
+    plt.show()
 ```
 
 ## Give two channels a shared rhythm
