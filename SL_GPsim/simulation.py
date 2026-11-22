@@ -17,6 +17,16 @@ def make_gaussian_bump_predictor(freqs, f_low, f_high, *, center, sigma):
     shape[mask] = np.exp(-((freqs[mask] - center)**2) / (2.0 * sigma**2))
     return shape
 
+def _two_sided_log_peaks(frequencies, peaks):
+    """Legacy multiplicative model: symmetric log10 peaks on the full FFT grid."""
+    result = np.zeros_like(frequencies, dtype=float)
+    for peak in peaks:
+        center, height, sigma = (float(peak[k]) for k in ("freq", "amplitude", "sigma"))
+        for signed_center in (center, -center):
+            result += height * np.exp(-((frequencies - signed_center) ** 2) / (2 * sigma ** 2))
+    return result
+
+
 def simulate_from_psd(PSD, fs, n_fft, n_time, random_seed=None, lambda_0=0.0):
     import numpy as np
     from numpy.fft import ifft
@@ -248,11 +258,7 @@ class CombinedSimulator(BaseSimulator):
 
         else:  # multiplicative
             # Peaks as log10-power bumps: P = P_bb * 10**G
-            G = np.zeros_like(freqs)
-            for pk in self.peaks:
-                f0 = float(pk["freq"]); a_log = float(pk["amplitude"]); sigma = float(pk["sigma"])
-                G += a_log * np.exp(-((freqs - f0) ** 2) / (2 * sigma ** 2))
-                G += a_log * np.exp(-((freqs + f0) ** 2) / (2 * sigma ** 2))
+            G = _two_sided_log_peaks(freqs, self.peaks)
             P_comb = P_bb * np.power(10.0, G)
             P_comb[0] = 0.0
 
