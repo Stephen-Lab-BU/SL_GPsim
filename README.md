@@ -78,6 +78,22 @@ print(np.angle(S20[1, 0], deg=True))          # -112.5 degrees
 
 The diagonal entries are the channel power spectra. The off-diagonal entry `C[:, 1, 0]` carries the phase of channel 2 relative to channel 1. At 20 Hz the delay is 15.625 ms, or 112.5° of lag. Far from the shared rhythm, coherence is low in the generating model and the estimated phase scatters.
 
+## How the spectral bootstrap works
+
+1. **Choose the generating spectrum.** For a recording of $N$ samples at $f_s$ Hz, use a Fourier grid of length $M=2N$ by default.
+   - **From a formula.** Evaluate $S_{\mathrm{true}}(f)$ on this grid, from zero to Nyquist. For several channels, supply their cross-spectral matrix at each frequency.
+   - **From data.** Estimate $\widehat S(f)$ on this grid. The default is to subtract each channel’s mean, apply three DPSS tapers, and zero-pad each tapered recording to $M$ before taking its FFT. Average $|J_a(f)|^2$ across tapers for channel $a$’s power. Average $J_a(f)\overline{J_b(f)}$ for its cross-spectrum with channel $b$. Here $J_a$ is the tapered Fourier coefficient for channel $a$.
+
+2. **Draw new Fourier coefficients.** Let $S_j$ be the two-sided density at frequency $f_j=j f_s/M$. To get $S_j$ from the one-sided input, the package halves the bins with a negative-frequency partner. At each interior positive frequency, draw $z_j=(a_j+i b_j)/\sqrt{2}$ with independent standard normal draws for $a_j$ and $b_j$ at each frequency.
+   - **One channel.** Set $U_j=\sqrt{M f_s S_j}\,z_j$.
+   - **Several channels.** Factor the Hermitian positive semidefinite spectral matrix as $\mathbf S_j=L_j L_j^H$, where $H$ denotes conjugate transpose. Collect one independent draw per channel in $\mathbf z_j$, then set $\mathbf U_j=\sqrt{M f_s}\,L_j\mathbf z_j$. Multiplying by $L_j$ gives the channels their specified cross-power and relative phase.
+
+3. **Generate one recording.** Use real standard normal draws at zero frequency and at Nyquist when $M$ is even. Set the negative-frequency coefficients to the conjugates of the positive-frequency coefficients. Take the inverse FFT of each channel and keep the first $N$ samples. This is one bootstrap recording, with the original duration and sampling rate. [Bloniasz & Stephen, Supplementary Section 1, Eqs. 29–33](https://doi.org/10.64898/2026.06.12.718232)
+
+4. **Repeat the measurement.** Compute the statistic on the original recording. For each bootstrap recording, re-estimate the spectrum on the original $N$-point grid and repeat the same analysis. For the 40–60 Hz broadband slope, this means refitting the decomposition before calculating the slope. Keep the generating spectrum fixed across draws. The 2.5th and 97.5th percentiles of the resulting values give the 95% bootstrap interval for each statistic.
+
+**Why generate twice the recording length?** An $N$-point inverse FFT treats the first and last samples as neighbors even though they are $N-1$ samples apart. Dai and Guo’s multivariate construction matches the spectral matrix at the Fourier frequencies and retains this wraparound. For the default multitaper estimate, the estimated auto- and cross-covariances are zero at lags of $N$ samples and beyond. Using $M=2N$ separates positive and negative lags, so the retained recording has exactly the covariances of that estimate through lag $N-1$. For an arbitrary continuous spectrum, the frequency sum approximates the covariance integral. To refine that approximation, increase `n_fft` in `SpectralGrid` and pass the same length as `n_fft_embedding` to `spectral_bootstrap`. [Dai & Guo, Eq. 3.1 and §4.2](https://doi.org/10.1093/biomet/91.3.629) · [Percival, Eqs. 5–6](https://staff.washington.edu/dbp/PDFFILES/Interface-92-all.pdf) · [Percival & Constantine, §3](https://doi.org/10.1007/s11222-006-5198-0) · [Chandna & Walden, Eq. 29 and Remark 1](https://doi.org/10.1109/TSP.2013.2279076)
+
 ## Bootstrap a measurement from a recording
 
 This function integrates 15–25 Hz power for each channel. Replace `xy` with your own array of shape `(samples, channels)` and set `fs` to its sampling rate. A single-channel vector works too.
@@ -96,6 +112,15 @@ print(np.column_stack((result.estimate, result.lower, result.upper)))
 ```
 
 With the seeds above, channel 1 gives 3.72 (95% interval 2.73–4.92) and channel 2 gives 2.33 (1.73–3.01), in squared signal units. Each row of `result.draws` holds the two measurements from one simulated recording, so you can also calculate paired contrasts. By default the observed multitaper cross-spectrum supplies the generating model. The interval describes sampling variability under that stationary Gaussian model.
+
+To use your own spectrum, give `grid.density` a function that returns one-sided power per Hz in linear units. Here the power falls to half its zero-frequency value at 10 Hz. Pass the spectrum to `grid.simulate` to draw a recording, or as `pilot_csd` to specify the generating spectrum for a bootstrap.
+
+```python
+s = grid.density(lambda f: 1 / (1 + (f / 10)**4))
+x = grid.simulate(s, random_state=7)
+result = spectral_bootstrap(x, fs=grid.fs, pilot_csd=s, statistic=beta_power,
+                            n_resamples=999, random_state=8)
+```
 
 ## Compare a decomposition with its bootstrap refits
 
