@@ -157,29 +157,14 @@ def test_multiplicative_theoretical_correctness():
     )
     fd = res.frequency_domain
     freqs = fd.frequencies
-    # Compute expected baseline and bump following the implementation in spectrum()
-    kappa = 0.0
-    # Note: the implementation uses f**exponent (not |f|**exponent); this can
-    # produce NaNs for negative frequencies when exponent is noninteger.
-    with np.errstate(divide="ignore", invalid="ignore"):
-        L = aoff - np.log10(kappa + np.power(freqs, aexp))
-    # Set DC bin to -inf to zero it out after exponentiation
-    if freqs.size and freqs[0] == 0.0:
-        L[0] = -np.inf
-    G = np.zeros_like(freqs)
-    for pk in peaks:
-        c = pk["freq"]
-        a_log = pk["amplitude"]
-        sigma = pk["sigma"]
-        # Only positive bump is added in the implementation
-        G += a_log * np.exp(-0.5 * ((freqs - c) / sigma) ** 2)
-    P_expected = np.power(10.0, L + G)
-    # Force DC bin to zero
-    if freqs.size and freqs[0] == 0.0:
-        P_expected[0] = 0.0
-    # Compare ignoring NaNs (NaNs arise from negative frequencies)**
-    mask = ~np.isnan(fd.combined_spectrum)
-    assert np.allclose(fd.combined_spectrum[mask], P_expected[mask])
+    # A real process has an even two-sided PSD, including for noninteger exponents.
+    abs_f = np.abs(freqs)
+    baseline = np.divide(10**aoff, abs_f**aexp, out=np.zeros_like(freqs), where=abs_f > 0)
+    log_peak = sum(np.exp(-0.5 * ((freqs-c)/3.0)**2) for c in (30., -30.))
+    expected = baseline * 10**log_peak
+    assert np.isfinite(fd.combined_spectrum).all()
+    np.testing.assert_allclose(fd.combined_spectrum, expected)
+    np.testing.assert_allclose(fd.combined_spectrum[1:], fd.combined_spectrum[:0:-1])
     # broadband and rhythmic components should be None or zero
     assert fd.broadband_spectrum is None or np.all(fd.broadband_spectrum == 0)
     assert fd.rhythmic_spectrum is None or np.all(fd.rhythmic_spectrum == 0)

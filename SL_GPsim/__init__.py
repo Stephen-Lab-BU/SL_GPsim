@@ -1,5 +1,11 @@
-from SL_GPsim.simulation import CombinedSimulator, BaseSimulator
+from SL_GPsim.simulation import CombinedSimulator, BaseSimulator, _two_sided_log_peaks
 from SL_GPsim.decomposition import ParametricDecomposition, BaseDecomposition
+from SL_GPsim.bootstrap import SpectralBootstrapResult, spectral_bootstrap
+from SL_GPsim.models import (
+    Broadband, GaussianPeak, Independent, LogPeaks, Shared, SpectrumModel, model_from_parameters,
+)
+from SL_GPsim.cross_spectral import multitaper_csd, simulate_from_csd
+from SL_GPsim.spectral_grid import SpectralGrid, SpectralWarning, simulate_like
 from SL_GPsim.time_domain import TimeDomainData
 from SL_GPsim.frequency_domain import FrequencyDomainData
 from SL_GPsim.plotting import PSDPlotter, BasePlotter
@@ -59,7 +65,7 @@ def spectrum(
         freq_data = decomposer.compute()
 
     elif mode == "multiplicative":
-        # Build L and G on the same one-sided grid as the additive decomposer
+        # Use the same two-sided background and mirrored peaks as the time-domain generator.
         grid = ParametricDecomposition(
             sampling_rate=sampling_rate,
             n_fft=simulator.n_fft,
@@ -70,23 +76,7 @@ def spectrum(
         ).compute()
 
         f = grid.frequencies
-        kappa = 0.0 if knee is None else float(knee)
-
-        with np.errstate(divide="ignore"):
-            L = aperiodic_offset - np.log10(kappa + np.power(f, aperiodic_exponent))
-        if f.size and f[0] == 0.0:
-            L[0] = -np.inf
-
-        G = np.zeros_like(f)
-        for pk in (peaks or []):
-            c = float(pk["freq"])
-            a_log = float(pk["amplitude"])
-            sigma = float(pk["sigma"])
-            G += a_log * np.exp(-0.5 * ((f - c) / sigma) ** 2)
-
-        P = np.power(10.0, L + G)
-        if f.size and f[0] == 0.0:
-            P[0] = 0.0
+        P = grid.broadband_spectrum * np.power(10.0, _two_sided_log_peaks(f, peaks or []))
 
         freq_data = FrequencyDomainData(
             frequencies=f,
